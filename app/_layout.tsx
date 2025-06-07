@@ -24,7 +24,7 @@ export default function RootLayout() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
           <Stack.Screen name = "index" options={{title: "Home", headerShown: false}} />
-          <Stack.Screen name = "signout" options={{title: "Sign Out", headerShown: false}} />
+          <Stack.Screen name = "sign_out" options={{title: "Sign Out", headerShown: false}} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
 
       </Stack>
