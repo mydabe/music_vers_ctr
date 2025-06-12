@@ -5,12 +5,9 @@ import { router } from 'expo-router';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword} from 'firebase/auth'
 import { Stack } from "expo-router";
 
-export const unstable_settings = {
-    initialRouteName: "initial-route", // set the initial route here
-};
 
 
-export default function Index(){
+export default function LoginScreen(){
     console.log(Dimensions.get('screen'))
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -28,7 +25,7 @@ export default function Index(){
     const signUp = async () => {
         try {
             const user = await createUserWithEmailAndPassword(auth, email, password);
-            if (user) router.replace('/sign_out')
+            if (user) router.replace('/(tabs)')
 
         }
         catch (error) {
@@ -44,7 +41,7 @@ export default function Index(){
                 Sign In
             </Text>
             <View style={[styles.container_three, styles.shiftInput]}>
-            <TextInput placeholder='email' value={email} onChangeText={setEmail}/>
+            <TextInput placeholder='email' /*value={email}*/ onChangeText={setEmail}/>
             <TextInput placeholder='password' value={password} onChangeText={setPassword}/>
             </View>
             <TouchableOpacity onPress={signIn}>
@@ -64,7 +61,6 @@ const styles = StyleSheet.create({
             justifyContent: 'center',
             alignItems: 'center',
             backgroundColor: 'transparent',
-            pointerEvents: "none"
         },
         container_two: {
             justifyContent: 'center',
@@ -72,7 +68,6 @@ const styles = StyleSheet.create({
             backgroundColor: 'dodgerblue',
             width: '50%',
             height: 400,
-            pointerEvents: "none"
         },
         container_three: {
             justifyContent: "center",
