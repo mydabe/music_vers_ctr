@@ -1,3 +1,5 @@
+import { initializeApp }      from 'firebase-admin/app';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { onObjectFinalized } from 'firebase-functions/v2/storage';
 import { tmpdir }           from 'node:os';
 import { join, basename }   from 'node:path';
@@ -5,6 +7,8 @@ import { unlink, readdir }  from 'node:fs/promises';
 import { execFile }         from 'node:child_process';
 import { Storage }          from '@google-cloud/storage';
 
+initializeApp();
+const db = getFirestore();
 const storage = new Storage();
 async function runAudiveris(pdfPath: string, outDir: string): Promise<void> {
     // Make sure cwd is where your JAR and lib/ folder live
@@ -59,33 +63,50 @@ export const pdfUpload = onObjectFinalized(
         if (!name || !name.endsWith('.pdf')) return;
 
         console.log(`📥 New PDF arrived: gs://${bucket}/${name}`);
+        const jobID = name.replace(/\//g, '_');
+        const conversionRef = db.collection('conversions').doc(jobID);
 
-        // 1. Download PDF to /tmp
-        const pdfName  = basename(name);
-        const localPdf = join(tmpdir(), pdfName);
-        await storage.bucket(bucket).file(name).download({ destination: localPdf });
-        console.log(`Saved a local copy at ${localPdf}`);
-
-        // 2. Inspect /tmp before conversion
-        console.log('Contents of /tmp before OMR:', await readdir(tmpdir()));
-        // 3. Run Audiveris
-        await runAudiveris(localPdf, tmpdir());
-
-        // 4. Inspect /tmp after conversion
-        console.log('Contents of /tmp after OMR:', await readdir(tmpdir()));
-
-        // 5. Upload the .mxl
-        const xmlName = pdfName.replace(/\.pdf$/, '.mxl');
-        const tmpXml  = join(tmpdir(), xmlName);
-        console.log(`Uploading ${tmpXml} to storage as ${xmlName}`);
-        await storage.bucket(bucket).upload(tmpXml, {
-            destination: name.replace(/\.pdf$/, '.mxl'),
-            contentType: 'application/vnd.recordare.musicxml+xml',
+        await conversionRef.set({
+            status: 'pending',
+            pdfPath: `gs://${bucket}/${name}`,
+            createdAt:  FieldValue.serverTimestamp(),
         });
 
-        // 6. Clean up
-        await Promise.all([unlink(localPdf), unlink(tmpXml)]);
-        console.log('Cleanup complete');
+        // 1. Download PDF to /tmp
+       try {
+            const pdfName = basename(name);
+            const localPdf = join(tmpdir(), pdfName);
+            await storage.bucket(bucket).file(name).download({destination: localPdf});
+            console.log(`Saved a local copy at ${localPdf}`);
+
+            await runAudiveris(localPdf, tmpdir());
+
+            const xmlName = pdfName.replace(/\.pdf$/, '.mxl');
+            const tmpXml = join(tmpdir(), xmlName);
+            console.log(`Uploading ${tmpXml} to storage as ${xmlName}`);
+            await storage.bucket(bucket).upload(tmpXml, {
+                destination: name.replace(/\.pdf$/, '.mxl'),
+                contentType: 'application/vnd.recordare.musicxml+xml',
+            });
+
+            await conversionRef.set({
+                status: 'done',
+                xmlPath: `gs://${bucket}/${name.replace(/\.pdf$/, '.mxl')}`,
+                completedAt: FieldValue.serverTimestamp(),
+            }, {merge: true})
+
+            // 6. Clean up
+            await Promise.all([unlink(localPdf), unlink(tmpXml)]);
+        }
+        catch (err: any) {
+            await conversionRef.set({
+                status:      'error',
+                errorMessage: err.message,
+                failedAt:     FieldValue.serverTimestamp(),
+            }, { merge: true });
+            throw err;  // so
+        }
+
     }
 );
 
