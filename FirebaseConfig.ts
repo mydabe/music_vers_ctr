@@ -2,6 +2,9 @@
 import { initializeApp } from "firebase/app";
 import {initializeAuth, getReactNativePersistence} from 'firebase/auth';
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+import storage from '@react-native-firebase/storage';
+import functions from '@react-native-firebase/functions';
+
 const firebaseConfig = {
     apiKey: "AIzaSyCDPsW5_dQ5mHDY9mtcVfP_q6zdmvFfJ6c",
     authDomain: "music-version-control.firebaseapp.com",
@@ -17,3 +20,4 @@ export const app = initializeApp(firebaseConfig);
 export const auth = initializeAuth(app, {
     persistence: getReactNativePersistence(ReactNativeAsyncStorage)
 });
+export {storage, functions}
