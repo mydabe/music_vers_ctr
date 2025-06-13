@@ -15,7 +15,7 @@ export default function LoginScreen(){
     const signIn = async () => {
         try {
             const user = await signInWithEmailAndPassword(auth, email, password);
-            if (user) router.replace('/(tabs)')
+            if (user) router.replace('/')
         }
         catch (error) {
             console.log(error);
@@ -25,7 +25,7 @@ export default function LoginScreen(){
     const signUp = async () => {
         try {
             const user = await createUserWithEmailAndPassword(auth, email, password);
-            if (user) router.replace('/(tabs)')
+            if (user) router.replace('/')
 
         }
         catch (error) {
