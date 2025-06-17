@@ -8,14 +8,13 @@ import { Stack } from "expo-router";
 
 
 export default function LoginScreen(){
-    console.log(Dimensions.get('screen'))
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
     const signIn = async () => {
         try {
             const user = await signInWithEmailAndPassword(auth, email, password);
-            if (user) router.replace('/')
+            if (user) router.replace('/(tabs)/dashboard')
         }
         catch (error) {
             console.log(error);
@@ -44,7 +43,7 @@ export default function LoginScreen(){
             <TextInput placeholder='email' /*value={email}*/ onChangeText={setEmail}/>
             <TextInput placeholder='password' value={password} onChangeText={setPassword}/>
             </View>
-            <TouchableOpacity onPress={signIn}>
+            <TouchableOpacity onPress={signIn}>r
                 <Text style={[styles.shiftLogin, styles.loginText]}> Login: </Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={signUp}>

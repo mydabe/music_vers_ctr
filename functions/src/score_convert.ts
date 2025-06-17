@@ -6,10 +6,16 @@ import { join, basename }   from 'node:path';
 import { unlink, readdir }  from 'node:fs/promises';
 import { execFile }         from 'node:child_process';
 import { Storage }          from '@google-cloud/storage';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-initializeApp();
-const db      = getFirestore();
+
+initializeApp();           // <-- THIS is required in functions
+const db = getFirestore();
 const storage = new Storage();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 async function runAudiveris(pdfPath: string, outDir: string): Promise<void> {
     const baseDir = join(__dirname, '..', 'audiveris');
@@ -50,12 +56,15 @@ export const pdfUpload = onObjectFinalized(
         cpu: 1,
     },
     async event => {
+        console.log('Running event...');
         const { bucket, name } = event.data!;
         if (!name.endsWith('.pdf')) return;
         console.log(`📥 New PDF arrived: gs://${bucket}/${name}`);
 
         // Extract jobId from the path: pdfs/{jobId}/{filename}.pdf
         const [, jobId] = name.split('/');
+        console.log(name)
+        console.log('Running PDF arrived:', jobId);
         const conversionRef = db.collection('conversions').doc(jobId);
 
         try {

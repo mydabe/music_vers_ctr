@@ -1,34 +1,56 @@
-import firestore from '@react-native-firebase/firestore';
-import storage   from '@react-native-firebase/storage';
+import { db, storage, FieldValue } from "@/FirebaseConfig"
+import { doc, collection, setDoc, serverTimestamp, updateDoc, onSnapshot, DocumentReference, getDoc } from 'firebase/firestore'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export async function uploadAndWait(localUri: string): Promise<string> {
-    const conversionRef = firestore().collection('conversions').doc();
+    console.log('Uploading doc...');
+    const conversionRef = doc(collection(db, "conversions"));
     const jobId = conversionRef.id;
-    await conversionRef.set({
+    await setDoc(conversionRef, {
         status: 'pending',
         pdfPath: '',
-        createdAt: firestore.FieldValue.serverTimestamp(),
+        createdAt: serverTimestamp(),
     });
 
     const fileName = localUri.split('/').pop()!;
-    const pdfRef     = storage().ref(`pdfs/${jobId}/${fileName}`);
-        /*** Switch ONLY storing SVG and drawings later ***/
+    const pdfRef= ref(storage, `pdfs/${jobId}/${fileName}`);
 
-    await pdfRef.putFile(localUri);
+    const resp = await fetch(localUri);
+    const blob = await resp.blob();
 
-    const gsUri = `gs://${pdfRef.bucket}/${pdfRef.fullPath}`;
-    await conversionRef.update({ pdfPath: gsUri });
-
-    await new Promise<void>((resolve, reject) => {
-        const unsub = conversionRef.onSnapshot(snap => {
-            const data = snap.data()!;
-            if (data.status === 'done')  { unsub(); return resolve(); }
-            if (data.status === 'error') { unsub(); return reject(new Error(data.errorMessage)); }
-        }, reject);
+    await uploadBytes(pdfRef, blob, {
+        contentType: "application/pdf",
     });
 
-    const { xmlPath } = (await conversionRef.get()).data()!;
-    return storage().refFromURL(xmlPath).getDownloadURL();
+    const gsUri = `gs://${pdfRef.bucket}/${pdfRef.fullPath}`;
+    await updateDoc(conversionRef, {pdfPath: gsUri});
+
+    await new Promise<void>((resolve, reject) => {
+        const unsub = onSnapshot(
+            conversionRef,
+            (snap) => {
+                const data = snap.data();
+                if (!data) return;
+
+                if (data.status === "done") {
+                    unsub();
+                    return resolve();
+                }
+
+                if (data.status === "error") {
+                    unsub();
+                    return reject(new Error(data.errorMessage));
+                }
+            },
+            reject // This handles snapshot errors
+        );
+    });
+
+    const snap = await getDoc(conversionRef);
+    const { xmlPath } = snap.data()!;
+    const storageRef = ref(storage, xmlPath);
+    const downloadUrl = await getDownloadURL(storageRef);
+    return downloadUrl;
 
 
 }

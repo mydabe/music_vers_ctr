@@ -9,11 +9,12 @@ import {
     ListRenderItemInfo,
     Button
 } from 'react-native';
-import { getAuth, signOut } from 'firebase/auth'
+import { signOut, onAuthStateChanged } from 'firebase/auth'
+import { auth } from '@/FirebaseConfig'
+import { getAuth } from 'firebase/auth';
 import { router } from "expo-router";
-import { doc, onSnapshot } from "firebase/firestore";
+import DocumentPicker, { types } from "react-native-document-picker"
 import {getDocumentAsync} from "expo-document-picker";
-import storage from '@react-native-firebase/storage'
 import { uploadAndWait } from "@/app/services/ConversionService";
 
 
@@ -22,38 +23,35 @@ export default function DashboardView() {
     const [scoresUploaded, setScoresUploaded] = useState<string[]>([]);
 
     const newUpload = async () => {
-        const doc = await getDocumentAsync({
-            type: ['application/pdf'],
-            copyToCacheDirectory: true,
-        });
-
-        if (doc.canceled) {
-            console.log('Document canceled', doc);
-            return;
-        }
-
-        const [{ uri, name, size, mimeType }] = doc.assets;
         try {
-            const xmlURL = await uploadAndWait(uri)
+            const res = await DocumentPicker.pickSingle({
+                type: [types.pdf],
+                copyTo: 'cachesDirectory', // Optional, for upload reliability
+            });
+
+            const { uri, name, size, type: mimeType } = res;
+
+            const xmlURL = await uploadAndWait(uri);
+            console.log("Document uploaded", xmlURL);
             // RENDER HERE
-        }
-        catch (err: any) {
-            console.error(err);
+
+        } catch (err: any) {
+            if (DocumentPicker.isCancel(err)) {
+                console.log('Document picking cancelled');
+            } else {
+                console.error('Unexpected error:', err);
+            }
         }
 
     }
-    const auth = getAuth();
-    const handleSignOut = async () => {
-        console.log(auth);
-        try {
-            await signOut(auth);
-            // After sign-out, send the user back to login ("/")
-            router.replace('/');
-        } catch (e: any) {
-            console.error('Failed to sign out:', e);
-            // Optionally show an alert/toast here
-        }
-    };
+
+
+    const handleSignOut = () =>  {
+        console.log('signOut');
+        signOut(auth);
+        router.replace("/")
+    }
+
 
 
     const renderScoreItem : ListRenderItem<string> = ({ item }) => {
@@ -62,10 +60,9 @@ export default function DashboardView() {
                 <Text style={styles.listItemTitle}>
                     {item}
                 </Text>
-                <Button title='Upload PDF' onPress={newUpload}>
+                <Button title='Upload PDF' onPress={newUpload} >
                 </Button>
-                <Button title='Sign Out' onPress={handleSignOut}>
-                </Button>
+
             </View>
         )
     }
@@ -74,6 +71,8 @@ export default function DashboardView() {
         <View style={styles.container}>
             <FlatList data={scores} renderItem={renderScoreItem}>
             </FlatList>
+            <Button title='Sign Out' onPress={handleSignOut}>
+            </Button>
         </View>
     )
 }

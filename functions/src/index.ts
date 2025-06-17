@@ -1,2 +1,2 @@
-export { pdfUpload } from './score_convert';
+export { pdfUpload } from './score_convert.js';
 
