@@ -14,6 +14,9 @@
       "npm --prefix \"$RESOURCE_DIR\" run build"
     ]
   },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
   "storage": {
     "rules": "storage.rules"
   },
@@ -24,9 +27,14 @@
     "storage": {
       "port": 9199
     },
+    "firestore": {
+      "port": 8080,
+      "rules": "firestore.rules"
+    },
     "ui": {
       "enabled": true
     },
     "singleProjectMode": true
   }
 }
+
